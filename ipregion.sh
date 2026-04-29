@@ -1770,7 +1770,7 @@ lookup_google() {
 	  curl_args+=(--interface "$INTERFACE_NAME")
 	fi
 	
-    country=$(timeout "$CURL_TIMEOUT" curl $SELECTED_DOH_URL $curl_ip_flag -sL "${curl_args[@]}" 'https://play.google.com/'   -H 'accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7'   -H 'accept-language: en-US;q=0.9'   -H 'priority: u=0, i'   -H 'sec-ch-ua: "Chromium";v="131", "Not_A Brand";v="24", "Google Chrome";v="131"'   -H 'sec-ch-ua-mobile: ?0'   -H 'sec-ch-ua-platform: "Windows"'   -H 'sec-fetch-dest: document'   -H 'sec-fetch-mode: navigate'   -H 'sec-fetch-site: none'   -H 'sec-fetch-user: ?1'   -H 'upgrade-insecure-requests: 1' -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36' | grep -oP '<div class="yVZQTb">\K[^<(]+')
+    country=$(timeout "$CURL_TIMEOUT" curl $SELECTED_DOH_URL $curl_ip_flag -sL "${curl_args[@]}" 'https://play.google.com/'   -H 'accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7'   -H 'accept-language: en-US;q=0.9'   -H 'priority: u=0, i'   -H 'sec-ch-ua: "Chromium";v="131", "Not_A Brand";v="24", "Google Chrome";v="131"'   -H 'sec-ch-ua-mobile: ?0'   -H 'sec-ch-ua-platform: "Windows"'   -H 'sec-fetch-dest: document'   -H 'sec-fetch-mode: navigate'   -H 'sec-fetch-site: none'   -H 'sec-fetch-user: ?1'   -H 'upgrade-insecure-requests: 1' -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36' | grep -oE '<div class="yVZQTb">[^<(]+' | sed 's/<div class="yVZQTb">//')
 
 	country=$(echo "$country" | xargs)  # убираем пробелы
 	if [[ -n "$country" ]]; then
@@ -1886,7 +1886,7 @@ lookup_youtube() {
     fi
 	
 	result=$(make_request GET "https://www.youtube.com" --ip-version "$ip_version" --user-agent "$USER_AGENT" \
-        | grep -oP '"countryCode":"\K\w+')
+        | grep -oE '"countryCode":"[^"]+"' | sed 's/"countryCode":"//;s/"$//')
 	
     if [[ -z "$result" || "$result" == "null" || "$result" == "n/a" || ${#result} -gt 7 ]]; then
         for entry in "${ARR_CUSTOM[@]}"; do
@@ -2018,7 +2018,7 @@ lookup_bing() {
   local tmpresult=$(timeout "$CURL_TIMEOUT" curl $SELECTED_DOH_URL -sL $curl_ip_flag "${curl_args[@]}" "https://www.bing.com/search?q=cats" --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36")
   
   local isCN=$(echo "$tmpresult" | grep 'cn.bing.com')
-  local region=$(echo "$tmpresult" | grep -woP 'Region\s{0,}:\s{0,}"\K[^"]+')
+  local region=$(echo "$tmpresult" | grep -oE 'Region[[:space:]]*:[[:space:]]*"[^"]+"' | sed 's/^[^"]*"//;s/"$//')
   
   if [ -n "$isCN" ]; then
     region='CN'
@@ -2028,7 +2028,7 @@ lookup_bing() {
   
   if [[ "$region" == "WW" ]]; then
 	tmpresult=$(timeout "$CURL_TIMEOUT" curl $SELECTED_DOH_URL -s "https://login.live.com" $curl_ip_flag "${curl_args[@]}" --user-agent "$USER_AGENT")
-	region=$(echo "$tmpresult" | grep -oP '"sRequestCountry":"\K[^"]*' | head -n1)
+	region=$(echo "$tmpresult" | grep -oE '"sRequestCountry":"[^"]*"' | sed 's/"sRequestCountry":"//;s/"$//' | head -n1)
   fi
 
   echo "$region"
@@ -2081,7 +2081,7 @@ lookup_amazon_prime() {
   local tmpresult=$(timeout "$CURL_TIMEOUT" curl $SELECTED_DOH_URL -sL $curl_ip_flag "${curl_args[@]}" "https://www.primevideo.com" --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36")
   
   local isBlocked=$(echo "$tmpresult" | grep -i 'isServiceRestricted')
-  local region=$(echo "$tmpresult" | grep -woP '"currentTerritory":"\K[^"]+' | head -n 1)
+  local region=$(echo "$tmpresult" | grep -oE '"currentTerritory":"[^"]+"' | sed 's/"currentTerritory":"//;s/"$//' | head -n 1)
   
   if [[ -z "$is_available" ]]; then
     region="${region:0:2}"
@@ -2115,7 +2115,7 @@ lookup_steam() {
   tmpresult=$(timeout "$CURL_TIMEOUT" curl $SELECTED_DOH_URL -sI "https://store.steampowered.com" $curl_ip_flag "${curl_args[@]}" \
     --user-agent "$USER_AGENT")
 
-  echo "$tmpresult" | grep -oP 'steamCountry=\K[^%;]*'
+  echo "$tmpresult" | grep -oE 'steamCountry=[^%;]*' | sed 's/steamCountry=//'
 }
 
 
