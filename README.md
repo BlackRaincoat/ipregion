@@ -96,6 +96,9 @@ For manual lookup of codes, you can use the official ISO website: [https://www.i
 # Use a specific network interface
 ./ipregion.sh --interface eth1
 
+# List all available service keys (for --services)
+./ipregion.sh --list-services
+
 # Check only specific services (comma-separated)
 ./ipregion.sh --services GOOGLE,YOUTUBE
 
@@ -123,6 +126,7 @@ Options:
   -v, --verbose           Enable verbose logging
   -j, --json              Output results in JSON format
   -g, --group GROUP       Run only one group: 'primary', 'custom', 'cdn', or 'all' (default: all)
+  -L, --list-services     Print service keys usable with -s and exit
   -s, --services LIST     Run only specified services (comma-separated, e.g. GOOGLE,YOUTUBE)
   -t, --timeout SEC       Set curl request timeout in seconds (default: 6)
   -4, --ipv4              Test only IPv4
@@ -135,6 +139,7 @@ Examples:
   ipregion.sh -g primary                  # Check only GeoIP services
   ipregion.sh -g custom                   # Check only popular websites
   ipregion.sh -g cdn                      # Check only CDN
+  ipregion.sh -L                          # List all service keys (for -s)
   ipregion.sh -s GOOGLE,YOUTUBE           # Check only Google and YouTube
   ipregion.sh -s GOOGLE,YOUTUBE,NETFLIX   # Check only Google, YouTube and Netflix
   ipregion.sh -4                          # Test only IPv4
