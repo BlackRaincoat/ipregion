@@ -6,17 +6,24 @@ This is a **fork** of the [script](https://github.com/Davoyan/ipregion), with a 
 ## Usage
 Run script:
 ```bash
-bash <(wget -qO- https://ipregion.xyz)
+bash <(wget -qO- https://ipregion.dogit.pw)
 ```
 Or run **directly** from GitHub:
 ```bash
 bash <(wget -qO- https://raw.githubusercontent.com/BlackRaincoat/ipregion/main/ipregion.sh)
 ```
 
+Download from GitHub and run locally:
+```bash
+curl -fsSL https://raw.githubusercontent.com/BlackRaincoat/ipregion/main/ipregion.sh -o ipregion.sh \
+  && chmod +x ipregion.sh \
+  && ./ipregion.sh
+```
+
 
 Output example:
 
-![image](https://i.imgur.com/Bn1o644.png)
+![image](https://i.imgur.com/2wxJAXw.png)
 
 ## What's New in This Fork
 
