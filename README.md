@@ -23,7 +23,7 @@ curl -fsSL https://raw.githubusercontent.com/BlackRaincoat/ipregion/main/ipregio
 
 Output example:
 
-![image](https://i.imgur.com/2wxJAXw.png)
+<img width="336" height="795" alt="2026-05-08_21-05-36" src="https://github.com/user-attachments/assets/738fcb64-ad9b-44a6-bcd0-2659828a36fe" />
 
 ## What's New in This Fork
 
