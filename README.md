@@ -34,6 +34,8 @@ Compared to the original script, this fork includes several improvements and fix
 - **Adjusted output table alignment** for better readability.  
 - **Separated YouTube and Google checks** — sometimes show different regions.  
 - **Correct detection of Google China (CN) region**.  
+- **`-s, --services` option** — run only selected services (e.g. `GOOGLE,YOUTUBE`).  
+- **`-L, --list-services` option** — print all available service keys for `-s` and exit.  
 - **Added support for additional services**: 2ip.io, Youtube Music, Bing, and Amazon Prime.  
 - **ASN detection using MaxMind database** — same as [IPQuality](https://github.com/xykt/IPQuality/).  
 - **CDN services removed from the default group** — can be checked separately if needed.  
