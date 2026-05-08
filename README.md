@@ -1,7 +1,7 @@
 # ipregion
 
 A bash script for determining your IP geolocation using various GeoIP services and popular websites.  
-This is a **fork** of the [original script](https://github.com/vernette/ipregion/), with a number of improvements and fixes.
+This is a **fork** of the [script](https://github.com/Davoyan/ipregion), with a number of improvements and fixes.
 
 ## Usage
 Run script:
@@ -10,7 +10,7 @@ bash <(wget -qO- https://ipregion.xyz)
 ```
 Or run **directly** from GitHub:
 ```bash
-bash <(wget -qO- https://raw.githubusercontent.com/Davoyan/ipregion/main/ipregion.sh)
+bash <(wget -qO- https://raw.githubusercontent.com/BlackRaincoat/ipregion/main/ipregion.sh)
 ```
 
 
