@@ -1,0 +1,8 @@
+* text=auto
+
+# Keep attributes file itself in LF
+.gitattributes text eol=lf
+
+# Keep shell scripts runnable on Unix/macOS (LF only)
+*.sh text eol=lf
+

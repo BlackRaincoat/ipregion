@@ -18,6 +18,7 @@ IPV6_ONLY=false
 PROXY_ADDR=""
 INTERFACE_NAME=""
 SERVICES_FILTER=""
+LIST_SERVICES=false
 
 RESULT_JSON=""
 ARR_PRIMARY=()
@@ -548,6 +549,7 @@ Options:
   -v, --verbose           Enable verbose logging
   -j, --json              Output results in JSON format
   -g, --group GROUP       Run only one group: 'primary', 'custom', 'cdn', or 'all' (default: all)
+  -L, --list-services     Print service keys usable with -s and exit
   -s, --services LIST     Run only specified services (comma-separated, e.g. GOOGLE,YOUTUBE)
   -t, --timeout SEC       Set curl request timeout in seconds (default: $CURL_TIMEOUT)
   -4, --ipv4              Test only IPv4
@@ -560,6 +562,7 @@ Examples:
   $0 -g primary                  # Check only GeoIP services
   $0 -g custom                   # Check only popular websites
   $0 -g cdn                      # Check only CDN endpoints
+  $0 -L                          # List all service keys (for -s)
   $0 -s GOOGLE,YOUTUBE           # Check only Google and YouTube
   $0 -s GOOGLE,YOUTUBE,NETFLIX   # Check only Google, YouTube and Netflix
   $0 -4                          # Test only IPv4
@@ -739,6 +742,21 @@ mask_ipv6() {
   }'
 }
 
+list_services() {
+  # Output is intentionally just keys, one per line,
+  # so it can be easily copy-pasted into -s KEY1,KEY2,...
+  echo "PRIMARY:"
+  printf "%s\n" "${PRIMARY_SERVICES_ORDER[@]}"
+  echo
+
+  echo "CUSTOM:"
+  printf "%s\n" "${CUSTOM_SERVICES_ORDER[@]}"
+  echo
+
+  echo "CDN:"
+  printf "%s\n" "${CDN_SERVICES_ORDER[@]}"
+}
+
 parse_arguments() {
   while [[ $# -gt 0 ]]; do
     case $1 in
@@ -757,6 +775,10 @@ parse_arguments() {
       -g | --group)
         GROUPS_TO_SHOW="$2"
         shift 2
+        ;;
+      -L | --list-services)
+        LIST_SERVICES=true
+        shift
         ;;
       -t | --timeout)
         if [[ "$2" =~ ^[0-9]+$ ]]; then
@@ -2235,6 +2257,11 @@ check_doh() {
 
 main() {
   parse_arguments "$@"
+
+  if [[ "$LIST_SERVICES" == true ]]; then
+    list_services
+    exit 0
+  fi
 
   install_dependencies
   check_doh
