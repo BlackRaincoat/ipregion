@@ -1740,65 +1740,37 @@ lookup_2ip() {
   process_json "$response" ".code"
 }
 
-get_country_code() {
-    local country="$1"
-    local json
-
-    json=$(curl $SELECTED_DOH_URL --max-time 5 -s "https://restcountries.com/v3.1/all?fields=name,cca2")
-    if [[ -z "$json" ]] || ! grep -q '"name"' <<<"$json"; then
-        echo ""
-        return
-    fi
-
-    jq -r --arg COUNTRY "$country" '
-        .[]
-        | select(.name.common | ascii_downcase == ($COUNTRY | ascii_downcase))
-        | .cca2
-    ' <<<"$json"
-}
-
 lookup_google() {
   local ip_version="$1"
-  local sed_filter='s/.*"[a-z]\{2\}_\([A-Z]\{2\}\)".*/\1/p'
-  local sed_fallback_filter='s/.*"[a-z]\{2\}-\([A-Z]\{2\}\)".*/\1/p'
   local response result
 
-  response=$(make_request GET "https://www.google.com" \
+  # www.google.com often serves /sorry; accounts sign-in exposes region reliably
+  response=$(make_request GET "https://accounts.google.com/v3/signin/identifier?flowName=GlifSetupAndroid" \
     --user-agent "$USER_AGENT" \
     --ip-version "$ip_version")
 
-  result=$(sed -n "$sed_filter" <<<"$response")
+  result=$(grep -oE 'name="region" value="[^"]+"' <<<"$response" 2>/dev/null \
+    | sed 's/name="region" value="//;s/"$//' | head -n1 || true)
 
-  if [[ -z "$result" ]]; then
-    result=$(sed -n "$sed_fallback_filter" <<<"$response" | tail -n 1)
-  fi
-  
-  if [[ -z "$result" ]]; then
-    local curl_ip_flag country
-	if [[ "$ip_version" == "4" ]]; then
-		curl_ip_flag="-4"
-	elif [[ "$ip_version" == "6" ]]; then
-		curl_ip_flag="-6"
-	else
-		curl_ip_flag="-4"
-	fi
-	
-	curl_args=()
-	
-	if [[ -n "$PROXY_ADDR" ]]; then
-	  curl_args+=(--proxy "socks5://$PROXY_ADDR")
-	fi
+  # Fallback: Play Store footer flag asset (.../regionflags/us.png)
+  if [[ -z "$result" || ${#result} -ne 2 ]]; then
+    local curl_ip_flag=(-4)
+    [[ "$ip_version" == "6" ]] && curl_ip_flag=(-6)
+    local curl_args=()
+    [[ -n "$PROXY_ADDR" ]] && curl_args+=(--proxy "socks5://$PROXY_ADDR")
+    [[ -n "$INTERFACE_NAME" ]] && curl_args+=(--interface "$INTERFACE_NAME")
 
-	if [[ -n "$INTERFACE_NAME" ]]; then
-	  curl_args+=(--interface "$INTERFACE_NAME")
-	fi
-	
-    country=$(timeout "$CURL_TIMEOUT" curl $SELECTED_DOH_URL $curl_ip_flag -sL "${curl_args[@]}" 'https://play.google.com/'   -H 'accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7'   -H 'accept-language: en-US;q=0.9'   -H 'priority: u=0, i'   -H 'sec-ch-ua: "Chromium";v="131", "Not_A Brand";v="24", "Google Chrome";v="131"'   -H 'sec-ch-ua-mobile: ?0'   -H 'sec-ch-ua-platform: "Windows"'   -H 'sec-fetch-dest: document'   -H 'sec-fetch-mode: navigate'   -H 'sec-fetch-site: none'   -H 'sec-fetch-user: ?1'   -H 'upgrade-insecure-requests: 1' -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36' | grep -oE '<div class="yVZQTb">[^<(]+' | sed 's/<div class="yVZQTb">//')
-
-	country=$(echo "$country" | xargs)  # убираем пробелы
-	if [[ -n "$country" ]]; then
-		result=$(get_country_code "$country")
-	fi  
+    result=$(timeout "$CURL_TIMEOUT" curl $SELECTED_DOH_URL "${curl_ip_flag[@]}" -sL --compressed \
+      "${curl_args[@]}" \
+      'https://play.google.com/' \
+      -H 'accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' \
+      -H 'accept-language: en-US;q=0.9' \
+      -H "user-agent: $USER_AGENT" \
+      2>/dev/null \
+      | grep -oE 'regionflags/[a-z]{2}\.png' \
+      | head -n1 \
+      | sed 's|regionflags/||;s|\.png||' \
+      | tr '[:lower:]' '[:upper:]' || true)
   fi
 
   echo "$result"
@@ -1897,41 +1869,48 @@ lookup_reddit_guest_access() {
 }
 
 lookup_youtube() {
-    local ip_version="$1"
-    local result curl_ip_flag service_name rest ipv4 ipv6
+  local ip_version="$1"
+  local response json_result result="" service_name rest ipv4 ipv6
 
-    if [[ "$ip_version" == "4" ]]; then
-        curl_ip_flag="-4"
-    elif [[ "$ip_version" == "6" ]]; then
-        curl_ip_flag="-6"
-    else
-        curl_ip_flag="-4"
-    fi
-	
-	result=$(make_request GET "https://www.youtube.com" --ip-version "$ip_version" --user-agent "$USER_AGENT" \
-        | grep -oE '"countryCode":"[^"]+"' | sed 's/"countryCode":"//;s/"$//')
-	
-    if [[ -z "$result" || "$result" == "null" || "$result" == "n/a" || ${#result} -gt 7 ]]; then
-        for entry in "${ARR_CUSTOM[@]}"; do
-            service_name="${entry%%|||*}"
-            if [[ "$service_name" == "Google" ]]; then
-                rest="${entry#*|||}"
-                ipv4="${rest%%|||*}"
-                ipv6="${rest#*|||}"
+  # Primary: sw.js_data (countryCode gone from homepage HTML)
+  response=$(make_request GET "https://www.youtube.com/sw.js_data" --ip-version "$ip_version")
+  json_result=$(tail -n +3 <<<"$response")
+  if is_valid_json "$json_result"; then
+    result=$(process_json "$json_result" '.[0][2][0][0][1]')
+    [[ "$result" == "null" ]] && result=""
+  fi
 
-                if [[ "$ip_version" == "4" ]]; then
-                    result="$ipv4"
-                else
-                    result="$ipv6"
-                fi
+  # Fallback: homepage ytcfg GL markers
+  if [[ -z "$result" || ${#result} -ne 2 ]]; then
+    response=$(make_request GET "https://www.youtube.com" --ip-version "$ip_version" --user-agent "$USER_AGENT")
+    result=$(grep -oE '"INNERTUBE_CONTEXT_GL":"[A-Z]{2}"' <<<"$response" 2>/dev/null \
+      | sed 's/"INNERTUBE_CONTEXT_GL":"//;s/"$//' | head -n1 || true)
+    [[ -z "$result" ]] && result=$(grep -oE '"GL":"[A-Z]{2}"' <<<"$response" 2>/dev/null \
+      | sed 's/"GL":"//;s/"$//' | head -n1 || true)
+    [[ -z "$result" ]] && result=$(grep -oE '"countryCode":"[A-Z]{2}"' <<<"$response" 2>/dev/null \
+      | sed 's/"countryCode":"//;s/"$//' | head -n1 || true)
+  fi
 
-                break
-            fi
-        done
-		#result=$(lookup_google "$ip_version")
-    fi
+  # Last resort: reuse Google result already collected in this run
+  if [[ -z "$result" || ${#result} -ne 2 ]]; then
+    for entry in "${ARR_CUSTOM[@]}"; do
+      service_name="${entry%%|||*}"
+      if [[ "$service_name" == "Google" ]]; then
+        rest="${entry#*|||}"
+        ipv4="${rest%%|||*}"
+        ipv6="${rest#*|||}"
+        if [[ "$ip_version" == "4" ]]; then
+          result="$ipv4"
+        else
+          result="$ipv6"
+        fi
+        break
+      fi
+    done
+  fi
 
-    echo "$result"
+  [[ "$result" == "null" || "$result" == "n/a" ]] && result=""
+  echo "$result"
 }
 
 
